@@ -111,6 +111,10 @@ cloudcart-ecommerce/
 │   ├── Dockerfile
 │   └── package.json
 │
+├── nginx/                          # Nginx Reverse Proxy Gateway
+│   ├── nginx.conf                  # Upstream routing, gzip compression, security headers
+│   └── Dockerfile                  # Lightweight alpine reverse proxy image
+│
 ├── database/
 │   ├── schema.sql                  # PostgreSQL DDL table definitions
 │   └── seed.sql                    # Initial seed data for users, categories, products, orders
@@ -125,10 +129,46 @@ cloudcart-ecommerce/
 │       └── ecs/                    # AWS ECS Fargate cluster and ALB
 │
 ├── .github/workflows/
-│   ├── ci.yml                      # Automated linting, test suites, and frontend build
-│   └── deploy.yml                  # Container image build and deployment pipeline
-├── docker-compose.yml              # Production container orchestration
+│   ├── ci-cd.yml                   # 3-Stage Pipeline: Test ➔ Build ➔ Deploy
+│   ├── ci.yml                      # CI test and linting workflow
+│   └── deploy.yml                  # Container build workflow
+├── .gitlab-ci.yml                  # GitLab CI pipeline (test, build, deploy)
+├── docker-compose.yml              # Production Nginx + Full-Stack orchestration
+├── Dockerfile                      # All-in-one multi-stage container
 └── README.md
+```
+
+---
+
+## 🔄 CI/CD Pipeline Architecture (`Test` ➔ `Build` ➔ `Deploy`)
+
+CloudCart features an automated 3-stage CI/CD pipeline implemented in [`.github/workflows/ci-cd.yml`](file:///d:/cloud%20e%20comerse/.github/workflows/ci-cd.yml) (and [`.gitlab-ci.yml`](file:///d:/cloud%20e%20comerse/.gitlab-ci.yml)):
+
+```
+┌─────────────────────────────────┐
+│     STAGE 1: TEST               │
+│  - Backend Test Suites          │
+│  - SQL Schema Validation        │
+│  - Linting & Sanity Verification│
+└────────────────┬────────────────┘
+                 │ (on success)
+                 ▼
+┌─────────────────────────────────┐
+│     STAGE 2: BUILD              │
+│  - Vite Production JS/CSS Build │
+│  - Docker Buildx Multi-Arch     │
+│  - Image Layer Caching (gha)    │
+│  - Backend, Frontend, & Nginx   │
+└────────────────┬────────────────┘
+                 │ (on success & main branch)
+                 ▼
+┌─────────────────────────────────┐
+│     STAGE 3: DEPLOY             │
+│  - Production Container Launch  │
+│  - Zero-Downtime Nginx Reload   │
+│  - Automated Smoke Test Health  │
+│  - Release Summary & Metrics    │
+└─────────────────────────────────┘
 ```
 
 ---

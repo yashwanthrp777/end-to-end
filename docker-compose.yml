@@ -1,4 +1,55 @@
 services:
+  # Nginx Gateway Reverse Proxy
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: cloudcart-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - frontend
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/nginx-health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # React SPA Frontend Container
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cloudcart-frontend
+    restart: unless-stopped
+    expose:
+      - "80"
+    depends_on:
+      - backend
+
+  # Express REST API Backend Container
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cloudcart-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    expose:
+      - "5000"
+    environment:
+      PORT: 5000
+      NODE_ENV: production
+      DATABASE_URL: postgresql://cloudcart:cloudcart_secret@postgres:5432/cloudcart_db
+      JWT_SECRET: super_secret_cloudcart_jwt_key_2026_xYz987!
+      CORS_ORIGIN: "*"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   # PostgreSQL Database Container
   postgres:
     image: postgres:15-alpine
@@ -19,37 +70,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-
-  # Express REST API Backend
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: cloudcart-backend
-    restart: unless-stopped
-    ports:
-      - "5000:5000"
-    environment:
-      PORT: 5000
-      NODE_ENV: production
-      DATABASE_URL: postgresql://cloudcart:cloudcart_secret@postgres:5432/cloudcart_db
-      JWT_SECRET: super_secret_cloudcart_jwt_key_2026_xYz987!
-      CORS_ORIGIN: "*"
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  # React SPA Frontend
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: cloudcart-frontend
-    restart: unless-stopped
-    ports:
-      - "80:80"
-    depends_on:
-      - backend
 
 volumes:
   pgdata:
