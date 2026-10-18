@@ -1,0 +1,16 @@
+{
+  "name": "cloudcart-ecommerce",
+  "version": "1.0.0",
+  "description": "Full-Stack Cloud E-Commerce Platform with React, Express, and PostgreSQL",
+  "scripts": {
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "test:backend": "npm --prefix backend test",
+    "build:frontend": "npm --prefix frontend run build",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down"
+  },
+  "keywords": ["ecommerce", "react", "express", "postgresql", "terraform", "docker"],
+  "author": "CloudCart Team",
+  "license": "MIT"
+}
