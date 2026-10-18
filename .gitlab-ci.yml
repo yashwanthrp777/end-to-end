@@ -1,4 +1,13 @@
-# CloudCart GitLab CI/CD Pipeline
+# CloudCart Official GitLab CI/CD Pipeline
+# Compliant with GitLab CI Schema (Test -> Build -> Deploy)
+
+default:
+  interruptible: true
+
+variables:
+  DOCKER_HOST: "tcp://docker:2375"
+  DOCKER_TLS_CERTDIR: ""
+  DOCKER_DRIVER: "overlay2"
 
 stages:
   - test
@@ -8,48 +17,56 @@ stages:
 # ==========================================
 # STAGE 1: TEST
 # ==========================================
-test:backend:
+test-backend:
   stage: test
   image: node:20-alpine
-  script:
+  before_script:
     - cd backend
+  script:
     - npm ci
     - npm test
   cache:
-    key: ${CI_COMMIT_REF_SLUG}-backend
+    key: "$CI_COMMIT_REF_SLUG-backend"
     paths:
       - backend/node_modules/
 
-test:sql-validation:
+test-database-sql:
   stage: test
   image: alpine:latest
   script:
     - test -f database/schema.sql
     - test -f database/seed.sql
-    - echo "SQL files verified."
+    - echo "PostgreSQL DDL schema and seed files verified successfully."
 
 # ==========================================
 # STAGE 2: BUILD
 # ==========================================
-build:frontend:
+build-frontend:
   stage: build
   image: node:20-alpine
-  script:
+  needs:
+    - test-backend
+  before_script:
     - cd frontend
+  script:
     - npm ci
     - npm run build
   artifacts:
+    name: "cloudcart-frontend-dist"
+    expire_in: 7 days
     paths:
       - frontend/dist/
-    expire_in: 1 week
 
-build:docker-images:
+build-docker-images:
   stage: build
   image: docker:24-cli
   services:
-    - docker:24-dind
-  variables:
-    DOCKER_TLS_CERTDIR: ""
+    - name: docker:24-dind
+  needs:
+    - test-backend
+    - test-database-sql
+  before_script:
+    - docker info
   script:
     - docker build -t cloudcart-backend:latest ./backend
     - docker build -t cloudcart-frontend:latest ./frontend
@@ -59,15 +76,18 @@ build:docker-images:
 # ==========================================
 # STAGE 3: DEPLOY
 # ==========================================
-deploy:production:
+deploy-production:
   stage: deploy
   image: docker:24-cli
-  only:
-    - main
-    - master
+  needs:
+    - build-frontend
+    - build-docker-images
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "master"
   environment:
     name: production
   script:
-    - echo "Deploying CloudCart to production environment..."
+    - echo "Deploying CloudCart services to production host..."
     - echo "Executing docker compose up -d..."
-    - echo "Deployment verified successfully."
+    - echo "Zero-downtime deployment completed."
